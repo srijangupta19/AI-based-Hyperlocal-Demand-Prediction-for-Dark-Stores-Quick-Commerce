@@ -17,7 +17,7 @@
 | 2   | Shreya Mohanty                                  |
 | 3   | Srijan Gupta                                    |
 | 4   | [Assir Thota](https://github.com/assirT24)                                     |
-| 5   | Ayush Vaibhav Gond                              |
+| 5   | [Ayush Vaibhav Gond](https://github.com/ayushvg)                              |
 
 ---
 
