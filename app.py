@@ -1,6 +1,4 @@
-# Optimized Full Streamlit Demand Forecast Dashboard
 
-```python
 import warnings
 from datetime import datetime, timedelta
 from pathlib import Path
