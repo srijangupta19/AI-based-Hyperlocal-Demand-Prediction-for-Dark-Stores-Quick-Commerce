@@ -5,3 +5,9 @@ numpy
 plotly
 scikit-learn
 firebase-admin
+streamlit
+pandas
+numpy
+plotly
+pyarrow
+fastparquet
