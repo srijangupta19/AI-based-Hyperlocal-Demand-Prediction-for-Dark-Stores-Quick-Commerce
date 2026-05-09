@@ -1,4 +1,3 @@
-
 import warnings
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -179,6 +178,7 @@ def discover_parquet_paths(base_dir: str = ".") -> tuple[str, str]:
     return str(stage1_path), str(stage2_path)
 
 
+@st.cache_data(show_spinner=False)
 def read_stage1() -> pd.DataFrame:
     stage1_path, _ = discover_parquet_paths()
     df = pd.read_parquet(stage1_path)
@@ -190,12 +190,15 @@ def read_stage1() -> pd.DataFrame:
     if "recovered_demand" not in df.columns:
         raise KeyError("Stage 1 file must contain recovered_demand.")
 
+    # Convert dt to datetime
+    df["dt"] = pd.to_datetime(df["dt"])
     df["category"] = df["first_category_id"]
     df["product_name"] = "Product_" + df["product_id"].astype(str)
     df["lost_sales"] = (df["recovered_demand"] - df["sale_amount"]).clip(lower=0)
     return df
 
 
+@st.cache_data(show_spinner=False)
 def read_stage2() -> pd.DataFrame:
     _, stage2_path = discover_parquet_paths()
     df = pd.read_parquet(stage2_path)
@@ -223,7 +226,8 @@ def read_stage2() -> pd.DataFrame:
         value_name="predicted_demand",
     )
     long_df["horizon"] = long_df["horizon"].str.extract(r"(\d+)").astype(int)
-    long_df["forecast_date"] = pd.to_datetime(long_df["dt"]) + pd.to_timedelta(long_df["horizon"], unit="D")
+    long_df["dt"] = pd.to_datetime(long_df["dt"])
+    long_df["forecast_date"] = long_df["dt"] + pd.to_timedelta(long_df["horizon"], unit="D")
     long_df["category"] = long_df["first_category_id"]
     long_df["product_name"] = "Product_" + long_df["product_id"].astype(str)
     long_df["forecast_source"] = source_name
@@ -231,6 +235,7 @@ def read_stage2() -> pd.DataFrame:
     return long_df
 
 
+@st.cache_data(show_spinner=False)
 def build_stage1_product_stats(stage1_df: pd.DataFrame) -> pd.DataFrame:
     agg = stage1_df.groupby("product_id", as_index=False).agg(
         baseline_sales_mu=("mean_sales_mu", "mean"),
@@ -257,6 +262,7 @@ def build_stage1_product_stats(stage1_df: pd.DataFrame) -> pd.DataFrame:
     return agg
 
 
+@st.cache_data(show_spinner=False)
 def build_stage1_category_stats(stage1_df: pd.DataFrame) -> pd.DataFrame:
     drivers = [
         "precpt",
@@ -290,6 +296,7 @@ def build_stage1_category_stats(stage1_df: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
+@st.cache_data(show_spinner=False)
 def enrich_stage2_with_stage1(stage2_long: pd.DataFrame, stage1_stats: pd.DataFrame) -> pd.DataFrame:
     keep_cols = [
         "product_id",
@@ -313,6 +320,7 @@ def enrich_stage2_with_stage1(stage2_long: pd.DataFrame, stage1_stats: pd.DataFr
     return stage2_long.merge(stage1_stats[keep_cols], on="product_id", how="left")
 
 
+@st.cache_data(show_spinner=False)
 def calculate_surge_products(forecasts_df: pd.DataFrame, threshold: float = 3.0) -> pd.DataFrame:
     df = forecasts_df.copy()
     baseline = df["baseline_sales_mu"].fillna(df["predicted_demand"].groupby(df["product_id"]).transform("mean"))
@@ -321,6 +329,7 @@ def calculate_surge_products(forecasts_df: pd.DataFrame, threshold: float = 3.0)
     return surge.sort_values("surge_ratio", ascending=False)
 
 
+@st.cache_data(show_spinner=False)
 def calculate_stockout_risk(forecasts_df: pd.DataFrame) -> pd.DataFrame:
     product_forecast = forecasts_df.groupby(
         ["product_id", "product_name", "category"], as_index=False
@@ -360,6 +369,7 @@ def calculate_stockout_risk(forecasts_df: pd.DataFrame) -> pd.DataFrame:
     return product_forecast.sort_values("days_of_cover")
 
 
+@st.cache_data(show_spinner=False)
 def calculate_lost_revenue(stage1_df: pd.DataFrame, avg_price: float = 15.0) -> pd.DataFrame:
     df = stage1_df.copy()
     df["lost_sales"] = (df["recovered_demand"] - df["sale_amount"]).clip(lower=0)
@@ -372,6 +382,7 @@ def calculate_lost_revenue(stage1_df: pd.DataFrame, avg_price: float = 15.0) -> 
     return summary.sort_values("lost_revenue", ascending=False)
 
 
+@st.cache_data(show_spinner=False)
 def daily_weather_summary(stage1_df: pd.DataFrame) -> pd.DataFrame:
     cols = ["precpt", "avg_temperature", "avg_humidity", "avg_wind_level"]
     available = [c for c in cols if c in stage1_df.columns]
@@ -492,13 +503,17 @@ def main():
         stage2_df = enrich_stage2_with_stage1(stage2_df, stage1_stats)
         weather_df = daily_weather_summary(stage1_df)
 
+    # Get date range from actual data
+    min_forecast_date = stage2_df['forecast_date'].min().date()
+    max_forecast_date = stage2_df['forecast_date'].max().date()
+
     # Sidebar filters
     st.sidebar.title("🎛️ Control Panel")
     st.sidebar.markdown("---")
 
     # ✅ Store filter FIRST
     stores = sorted(stage2_df['store_id'].unique().tolist())
-    selected_store = st.sidebar.selectbox("🏪 Store", stores)
+    selected_store = st.sidebar.selectbox("🏪 Store", stores, key="store_select")
 
     # ✅ Filter data by store
     filtered_forecasts = stage2_df[
@@ -511,7 +526,7 @@ def main():
 
     # ✅ Category filter (based on selected store)
     categories = ['All Categories'] + sorted(filtered_forecasts['category'].unique().tolist())
-    selected_category = st.sidebar.selectbox("📦 Category Filter", categories)
+    selected_category = st.sidebar.selectbox("📦 Category Filter", categories, key="category_select")
 
     # Apply category filter
     if selected_category != 'All Categories':
@@ -522,10 +537,28 @@ def main():
         filtered_stage1['category'] == selected_category
     ]
 
-    # Date range (unchanged)
+    # Date range - using actual data range
     st.sidebar.markdown("### 📅 Forecast Period")
-    start_date = st.sidebar.date_input("Start Date", datetime.now())
-    end_date = st.sidebar.date_input("End Date", datetime.now() + timedelta(days=6))
+    start_date = st.sidebar.date_input(
+        "Start Date", 
+        value=min_forecast_date,
+        min_value=min_forecast_date,
+        max_value=max_forecast_date,
+        key="start_date"
+    )
+    end_date = st.sidebar.date_input(
+        "End Date", 
+        value=max_forecast_date,
+        min_value=min_forecast_date,
+        max_value=max_forecast_date,
+        key="end_date"
+    )
+
+    # Filter by date range
+    filtered_forecasts = filtered_forecasts[
+        (filtered_forecasts['forecast_date'].dt.date >= start_date) &
+        (filtered_forecasts['forecast_date'].dt.date <= end_date)
+    ]
 
     tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(
         [
@@ -612,7 +645,7 @@ def main():
 
         st.markdown("---")
         st.subheader("🔥 Surge Alert - Products with Unusual Demand Spikes")
-        surge_threshold = st.slider("Surge Threshold (multiple of average)", 1.5, 5.0, 2.5, 0.5)
+        surge_threshold = st.slider("Surge Threshold (multiple of average)", 1.5, 5.0, 2.5, 0.5, key="surge_threshold")
 
         surge_products = calculate_surge_products(filtered_forecasts, threshold=surge_threshold)
         if len(surge_products) > 0:
@@ -767,14 +800,14 @@ def main():
         st.header("💰 Lost Sales Audit - Ghost Revenue Recovery")
         st.markdown("**Stage 1 Demand Recovery**: How much revenue did we miss due to stockouts?")
 
-        avg_price = st.number_input("💵 Average Product Price (₹)", min_value=1.0, value=15.0, step=1.0)
+        avg_price = st.number_input("💵 Average Product Price (₹)", min_value=1.0, value=15.0, step=1.0, key="avg_price")
 
-        lost_revenue_df = calculate_lost_revenue(stage1_df, avg_price=avg_price)
+        lost_revenue_df = calculate_lost_revenue(filtered_stage1, avg_price=avg_price)
 
         col1, col2, col3 = st.columns(3)
-        total_lost_sales = stage1_df["lost_sales"].sum()
+        total_lost_sales = filtered_stage1["lost_sales"].sum()
         total_lost_revenue = total_lost_sales * avg_price
-        avg_recovery_rate = stage1_df["recovery_uplift"].mean()
+        avg_recovery_rate = filtered_stage1["recovery_uplift"].mean()
 
         with col1:
             st.metric("📦 Total Lost Sales", f"{total_lost_sales:,.0f} units")
@@ -807,7 +840,7 @@ def main():
 
         st.subheader("📈 Lost Sales Trend Over Time")
         daily_lost = (
-            stage1_df.groupby("dt", as_index=False)
+            filtered_stage1.groupby("dt", as_index=False)
             .agg(
                 lost_sales=("lost_sales", "sum"),
                 sale_amount=("sale_amount", "sum"),
@@ -839,7 +872,7 @@ def main():
 
         st.subheader("🎯 Top 20 Products by Lost Revenue")
         product_lost = (
-            stage1_df.groupby(["product_name", "category"], as_index=False)
+            filtered_stage1.groupby(["product_name", "category"], as_index=False)
             .agg(
                 lost_sales=("lost_sales", "sum"),
                 sale_amount=("sale_amount", "sum"),
@@ -880,16 +913,16 @@ def main():
 
         with col1:
             st.subheader("🌧️ Weather Impact")
-            rainfall = st.slider("Expected Rainfall (mm)", 0.0, 100.0, float(stage1_df["precpt"].mean()), 5.0)
-            temperature = st.slider("Temperature (°C)", 15.0, 45.0, float(stage1_df["avg_temperature"].mean()), 1.0)
-            humidity = st.slider("Humidity (%)", 20.0, 100.0, float(stage1_df["avg_humidity"].mean()), 1.0)
-            wind_level = st.slider("Wind Level", 0.0, 10.0, float(stage1_df["avg_wind_level"].mean()), 0.5)
+            rainfall = st.slider("Expected Rainfall (mm)", 0.0, 100.0, float(stage1_df["precpt"].mean()), 5.0, key="sim_rainfall")
+            temperature = st.slider("Temperature (°C)", 15.0, 45.0, float(stage1_df["avg_temperature"].mean()), 1.0, key="sim_temp")
+            humidity = st.slider("Humidity (%)", 20.0, 100.0, float(stage1_df["avg_humidity"].mean()), 1.0, key="sim_humidity")
+            wind_level = st.slider("Wind Level", 0.0, 10.0, float(stage1_df["avg_wind_level"].mean()), 0.5, key="sim_wind")
 
         with col2:
             st.subheader("🎁 Promotion Impact")
-            discount = st.slider("Discount (%)", 0.0, 50.0, float(stage1_df["discount"].median()), 5.0)
-            is_promotion = st.toggle("Activate Promotion Mode", value=False)
-            is_holiday = st.toggle("Mark as Holiday", value=False)
+            discount = st.slider("Discount (%)", 0.0, 50.0, float(stage1_df["discount"].median()), 5.0, key="sim_discount")
+            is_promotion = st.toggle("Activate Promotion Mode", value=False, key="sim_promo")
+            is_holiday = st.toggle("Mark as Holiday", value=False, key="sim_holiday")
 
         st.markdown("---")
         st.subheader("📊 Simulated Demand Forecast")
@@ -979,6 +1012,7 @@ def main():
             1.2,
             0.1,
             help="Additional buffer stock (e.g., 1.2 = 20% extra)",
+            key="safety_stock"
         )
 
         replen_df = calculate_stockout_risk(filtered_forecasts)
