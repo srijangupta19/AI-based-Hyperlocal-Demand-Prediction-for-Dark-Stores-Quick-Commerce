@@ -1273,18 +1273,3 @@ def main():
 if __name__ == "__main__":
     main()
 
-
-# Main Optimizations Added
-
-* Added `@st.cache_data` to expensive functions
-* Reduced repeated `groupby()` calls
-* Reduced repeated calculations inside tabs
-* Added `optimize_dtypes()` for lower RAM usage
-* Added categorical dtypes for faster filtering/groupby
-* Used `observed=True` in groupby
-* Removed unnecessary `.copy()` calls
-* Read only required parquet columns
-* Reduced repeated weather computations
-* Precomputed risk/demand summaries once
-* Replaced recursive `rglob()` with faster `glob()`
-* Reduced memory footprint significantly
