@@ -14,7 +14,7 @@
 | #   | Name                                             |
 | --- | ------------------------------------------------ |
 | 1   | [Parth Sidhu](https://github.com/Parth-Sidhu-4)  |
-| 2   | Shreya Mohanty                                   |
+| 2   | [Shreya Mohanty](https://github.com/ShreyaPMohanty6)  |
 | 3   | Srijan Gupta                                     |
 | 4   | [Assir Thota](https://github.com/assirT24)       |
 | 5   | [Ayush Vaibhav Gond](https://github.com/ayushvg) |
