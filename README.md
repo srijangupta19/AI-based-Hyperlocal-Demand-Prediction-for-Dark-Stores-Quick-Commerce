@@ -2,6 +2,7 @@
 
 [![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-blue.svg)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+![Course Project](https://img.shields.io/badge/Project-Course%20Project-success)
 
 A machine learning pipeline for **latent demand recovery** and **7-day demand forecasting** in quick-commerce and dark store operations, inspired by the **FreshRetailNet** benchmark. This project reproduces the paper's two-stage pipeline using computationally efficient models that can be trained and deployed on commodity hardware.
 
@@ -17,31 +18,61 @@ A machine learning pipeline for **latent demand recovery** and **7-day demand fo
 
 | # | Name | Primary Contribution |
 |---|------|----------------------|
-| 1 | [Parth Sidhu](https://github.com/Parth-Sidhu-4) | Pipeline design, feature engineering, Stage 1 implementation, LightGBM, model training, experimentation, documentation |
-| 2 | [Shreya Mohanty](https://github.com/ShreyaPMohanty6) | Streamlit deployment, deployment artifacts |
-| 3 | Srijan Gupta | Baseline experiments (Stage 2 implementation, XGBoost) |
-| 4 | [Assir Thota](https://github.com/assirT24) | Dataset study |
-| 5 | [Ayush Vaibhav Gond](https://github.com/ayushvg) | 2 - Stage Pipeline Design |
+| 1 | [Parth Sidhu](https://github.com/Parth-Sidhu-4) | Pipeline design, feature engineering, Stage 1 implementation, model development, experimentation, documentation |
+| 2 | [Shreya Mohanty](https://github.com/ShreyaPMohanty6) | Streamlit deployment, model packaging, deployment artifacts |
+| 3 | Srijan Gupta | Baseline experiments, Stage 2 exploration, XGBoost implementation |
+| 4 | [Assir Thota](https://github.com/assirT24) | Dataset analysis and preprocessing support |
+| 5 | [Ayush Vaibhav Gond](https://github.com/ayushvg) | Two-stage pipeline study and methodology |
 
 ---
 
 # Overview
 
-Demand forecasting for fresh produce is challenging because observed sales often underestimate actual customer demand whenever products go out of stock. This project addresses that problem using a **two-stage forecasting pipeline** based on the methodology proposed in the **FreshRetailNet** paper.
+Demand forecasting for fresh produce is challenging because observed sales often underestimate actual customer demand whenever products experience stockouts. This project addresses that problem using a **two-stage forecasting pipeline** based on the methodology proposed in the **FreshRetailNet** paper.
 
 Instead of reproducing the original computationally intensive architecture, we replace it with lightweight machine learning models that deliver competitive performance while significantly reducing training time and hardware requirements.
 
 ---
 
+# Workflow
+
+```text
+                   FreshRetailNet Dataset
+                           │
+                           ▼
+               Data Preprocessing & Feature Engineering
+                           │
+                           ▼
+             Stage 1: Latent Demand Recovery
+                 (LightGBM - Tweedie Loss)
+                           │
+                   Recovered Demand (Dₜ)
+                           │
+                           ▼
+        Stage 2: Multi-Horizon Demand Forecasting
+            (LightGBM + MLP + SSA Baseline)
+                           │
+                           ▼
+          Weighted Ensemble & Bias Calibration
+                           │
+                           ▼
+                 7-Day Demand Forecasts
+                           │
+                           ▼
+              Streamlit Deployment Application
+```
+
+---
+
 # Project Highlights
 
-- Two-stage demand forecasting pipeline inspired by FreshRetailNet
-- Latent demand recovery using LightGBM with Tweedie objective
-- Multi-horizon demand forecasting using LightGBM + MLP ensemble
-- CPU-friendly implementation requiring no high-end GPU
-- End-to-end Streamlit deployment included
-- Comprehensive evaluation against the published benchmark
-- Modular notebooks for experimentation and reproducibility
+- Two-stage demand forecasting pipeline inspired by the FreshRetailNet benchmark.
+- Latent demand recovery using **LightGBM** with a Tweedie objective.
+- Multi-horizon forecasting using an **MLP + LightGBM ensemble**.
+- CPU-friendly implementation requiring no high-end GPU.
+- End-to-end **Streamlit deployment** included.
+- Comprehensive evaluation against the published benchmark.
+- Modular notebooks for experimentation and reproducibility.
 
 ---
 
@@ -65,11 +96,11 @@ Observed retail sales become censored whenever products experience stockouts. St
 
 ### Workflow
 
-- Simulate Missing-Not-At-Random (MNAR) censoring
-- Train LightGBM using Tweedie objective
-- Engineer lag, rolling, weather, promotional, and calendar features
-- Learn a bias correction factor using validation data
-- Recover daily latent demand
+- Simulate Missing-Not-At-Random (MNAR) censoring.
+- Train LightGBM using the Tweedie objective.
+- Engineer lag, rolling, weather, promotional, and calendar features.
+- Learn a scalar bias correction factor using validation data.
+- Recover the latent daily demand.
 
 ### Features Used
 
@@ -83,13 +114,9 @@ Observed retail sales become censored whenever products experience stockouts. St
 
 ### Evaluation Metric
 
-- **Weighted Absolute Percentage Error (WAPE)**
+**Weighted Absolute Percentage Error (WAPE)**
 
-Paper baseline:
-
-```
-27.62%
-```
+**Paper Baseline:** **27.62%**
 
 ---
 
@@ -101,18 +128,18 @@ Recovered latent demand from Stage 1 becomes the target variable for multi-horiz
 
 - Previous 28 days of recovered demand
 - Future weather information
-- Promotion schedule
+- Promotion schedules
 - Calendar variables
 
 ### Models
 
-- LightGBM
-- Multi-Layer Perceptron (DemandMLP)
-- Similar Scenario Average (SSA)
+- **LightGBM**
+- **DemandMLP (PyTorch)**
+- **SSA (Similar Scenario Average)**
 
-### Ensemble
+### Ensemble Strategy
 
-Final predictions are obtained by blending the LightGBM and MLP predictions using horizon-specific optimal weights.
+Final predictions are generated by blending the LightGBM and MLP outputs using horizon-specific optimal weights selected through validation.
 
 ---
 
@@ -120,21 +147,21 @@ Final predictions are obtained by blending the LightGBM and MLP predictions usin
 
 This project uses the **FreshRetailNet** dataset.
 
-Dataset characteristics:
+### Dataset Characteristics
 
-- Real-world retail transactions
+- Large-scale real-world retail transactions
 - Fresh produce demand
-- Multiple stores
-- Multiple products
+- Multiple stores and products
 - Weather information
-- Promotion information
+- Promotional campaigns
 - Inventory availability
+- Calendar metadata
 
-The dataset is **not included** in this repository due to licensing and size constraints.
+The dataset is **not included** in this repository due to licensing restrictions and file size.
 
-Key files:
+Expected dataset files:
 
-```
+```text
 train.parquet
 eval.parquet
 ```
@@ -152,7 +179,7 @@ eval.parquet
 │   ├── random-forest-stage-1-trial-2-improved-shreya-mohanty.ipynb
 │   └── xg-boost-stage-1-srijan-gupta.ipynb
 │
-├── models-deployment-Shreya/
+├── deployment/
 │   ├── app.py
 │   ├── deployment_config.pkl
 │   ├── lgb_s2_h*.txt
@@ -185,28 +212,30 @@ eval.parquet
 
 # Deployment
 
-The repository includes a complete **Streamlit deployment** developed by **Shreya Mohanty**.
+The repository includes a complete **Streamlit deployment** contributed by **Shreya Mohanty**.
 
 Location:
 
-```
-models-deployment-Shreya/
+```text
+deployment/
 ```
 
-Contents:
+Contents include:
 
-- Streamlit application
+- Streamlit web application (`app.py`)
 - Trained LightGBM models
 - Trained MLP models
 - Deployment configuration
-- Forecast outputs
+- Saved evaluation outputs
 - Deployment-specific dependencies
+
+The deployment folder contains everything required to launch the trained forecasting models through a Streamlit interface without retraining.
 
 ---
 
 # Installation
 
-## Clone the Repository
+## 1. Clone the Repository
 
 ```bash
 git clone https://github.com/Parth-Sidhu-4/AI-based-Hyperlocal-Demand-Prediction-for-Dark-Stores-Quick-Commerce.git
@@ -216,7 +245,7 @@ cd AI-based-Hyperlocal-Demand-Prediction-for-Dark-Stores-Quick-Commerce
 
 ---
 
-## Install Dependencies
+## 2. Install Dependencies
 
 ```bash
 pip install -r requirements.txt
@@ -226,36 +255,40 @@ pip install -r requirements.txt
 
 # Running the Project
 
-## Step 1
+## Step 1: Download the Dataset
 
-Download the FreshRetailNet dataset.
+Download the **FreshRetailNet** dataset.
 
 Expected files:
 
-```
+```text
 train.parquet
 eval.parquet
 ```
 
 ---
 
-## Step 2
+## Step 2: Configure Dataset Paths
 
-Update the dataset paths inside
+Either:
 
-```
-notebooks/demand_prediction-final-stage-1-stage-2-parth-sidhu.ipynb
-```
+- Place the dataset inside
 
-or place them under
-
-```
+```text
 /kaggle/input/freshretailnet/
+```
+
+or
+
+- Update the dataset paths inside
+
+```text
+notebooks/demand_prediction-final-stage-1-stage-2-parth-sidhu.ipynb
 ```
 
 ---
 
-## Step 3
+## Step 3: Execute the Notebook
 
 Run the notebook sequentially.
 
@@ -263,12 +296,12 @@ The notebook performs:
 
 - Data preprocessing
 - Feature engineering
-- Stage 1 demand recovery
-- Stage 2 forecasting
-- Evaluation
+- Stage 1 latent demand recovery
+- Stage 2 demand forecasting
+- Model evaluation
 - Visualization
 
-If training has already completed, the notebook can reload the saved models instead of retraining.
+If models have already been trained, the notebook can reload saved model checkpoints instead of retraining.
 
 ---
 
@@ -276,14 +309,14 @@ If training has already completed, the notebook can reload the saved models inst
 
 ## Stage 1: Latent Demand Recovery
 
-| Metric | Our Model | Paper |
-|---------|-----------|--------|
+| Metric | Our Model | FreshRetailNet Paper |
+|---------|----------:|---------------------:|
 | WAPE | **27.98%** | **27.62%** |
 | WPE | **-6.96%** | **-7.37%** |
 
 ---
 
-## Stage 2: Seven-Day Forecasting
+## Stage 2: Seven-Day Demand Forecasting
 
 | Model | Mean WAPE | Mean WPE |
 |--------|----------:|---------:|
@@ -316,7 +349,7 @@ If training has already completed, the notebook can reload the saved models inst
 
    **LightGBM: A Highly Efficient Gradient Boosting Decision Tree**
 
-   NeurIPS 2017.
+   *NeurIPS 2017*
 
 ---
 
@@ -330,6 +363,12 @@ See the [LICENSE](LICENSE) file for details.
 
 # Acknowledgements
 
-We thank **Dr. Anshika Srivastava** for her guidance throughout the Artificial Intelligence and Machine Learning course at **Gati Shakti Vishwavidyalaya**.
+We sincerely thank **Dr. Anshika Srivastava**, Assistant Professor and Program Coordinator, Gati Shakti Vishwavidyalaya, for her guidance and mentorship throughout the Artificial Intelligence and Machine Learning course.
 
-This project is based on ideas introduced in the **FreshRetailNet** research paper while presenting our own implementation, experiments, and deployment pipeline.
+This project is inspired by the **FreshRetailNet** benchmark while presenting our own implementation, experimentation, evaluation, and deployment pipeline.
+
+---
+
+> **Academic Notice**
+>
+> This repository was developed as part of the Artificial Intelligence and Machine Learning coursework at **Gati Shakti Vishwavidyalaya**. It is intended solely for educational, research, and demonstration purposes.
