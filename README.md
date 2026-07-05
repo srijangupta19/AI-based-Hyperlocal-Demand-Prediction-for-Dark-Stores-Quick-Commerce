@@ -20,7 +20,7 @@ A machine learning pipeline for **latent demand recovery** and **7-day demand fo
 |---|------|----------------------|
 | 1 | [Parth Sidhu](https://github.com/Parth-Sidhu-4) | Pipeline design, feature engineering, Stage 1 implementation, model development, experimentation, documentation |
 | 2 | [Shreya Mohanty](https://github.com/ShreyaPMohanty6) | Streamlit deployment, model packaging, deployment artifacts |
-| 3 | Srijan Gupta | Baseline experiments, Stage 2 exploration, XGBoost implementation |
+| 3 | [Srijan Gupta](https://github.com/srijangupta19) | Baseline experiments, Stage 2 exploration, XGBoost implementation |
 | 4 | [Assir Thota](https://github.com/assirT24) | Dataset analysis and preprocessing support |
 | 5 | [Ayush Vaibhav Gond](https://github.com/ayushvg) | Two-stage pipeline study and methodology |
 
